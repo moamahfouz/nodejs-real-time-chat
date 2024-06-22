@@ -1,3 +1,4 @@
+<!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,37 +21,85 @@
         #message-form {
             margin-top: 20px;
         }
+
+        #username-form {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
 <h1>Real-Time Chat</h1>
-<ul id="messages"></ul>
-<form id="message-form">
-    <input id="message-input" autocomplete="off" placeholder="Type a message..."/>
-    <button>Send</button>
-</form>
+
+<div id="username-form">
+    <input id="username-input" placeholder="Enter your username"/>
+    <button id="connectBtn">Connect</button>
+</div>
+
+<div id="chat" style="display: none;">
+    <ul id="messages"></ul>
+    <form id="message-form">
+        <input id="message-input" autocomplete="off" placeholder="Type a message..."/>
+        <button>Send</button>
+    </form>
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    const socket = io();
+    let socket;
+    let username;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const usernameInput = document.getElementById('username-input');
+    const usernameForm = document.getElementById('username-form');
+    const chatDiv = document.getElementById('chat');
 
     const messages = document.getElementById('messages');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
 
-    // Listen for incoming messages
-    socket.on('chat message', (msg) => {
-        const li = document.createElement('li');
-        li.textContent = msg;
-        messages.appendChild(li);
-    });
+    connectBtn.addEventListener('click', () => {
+        username = usernameInput.value.trim();
+        if (username) {
+            socket = io();
 
-    // Handle form submission
-    messageForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const message = messageInput.value;
-        socket.emit('chat message', message);
-        messageInput.value = '';
+            // Emit username after connection
+            socket.emit('set username', username);
+
+            usernameForm.style.display = 'none';
+            chatDiv.style.display = 'block';
+
+            // Listen for incoming messages
+            socket.on('chat message', (msg) => {
+                const li = document.createElement('li');
+                li.textContent = msg;
+                messages.appendChild(li);
+            });
+
+            // Connection opened
+            socket.addEventListener('connect', function (event) {
+                messages.innerHTML += '<p>Connected to the WebSocket server.</p>';
+            });
+
+            // Connection closed
+            socket.addEventListener('disconnect', function (event) {
+                messages.innerHTML += '<p>Disconnected from the WebSocket server.</p>';
+            });
+
+            // Connection error
+            socket.addEventListener('error', function (event) {
+                messages.innerHTML += '<p>Error: ' + event.data + '</p>';
+            });
+
+            // Handle form submission
+            messageForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const message = messageInput.value;
+                if (message) {
+                    socket.emit('chat message', `${username}: ${message}`);
+                    messageInput.value = '';
+                }
+            });
+        }
     });
 </script>
 </body>

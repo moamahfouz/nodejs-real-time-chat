@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -10,10 +11,14 @@ app.use(express.static('public'));
 
 io.on('connection', (socket) => {
     console.log('A user connected');
+    let username;
 
-    // Handle incoming messages
+    socket.on('set username', (name) => {
+        username = name;
+        console.log(`User set username: ${username}`);
+    });
+
     socket.on('chat message', (msg) => {
-        // Broadcast the message to everyone
         io.emit('chat message', msg);
     });
 
@@ -22,7 +27,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
