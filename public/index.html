@@ -5,42 +5,103 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-Time Chat</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        /* Custom CSS */
+        .chat-container {
+            max-width: 800px;
+            margin: auto;
+            margin-top: 50px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .chat-header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .chat-body {
+            height: 500px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f7f7f7;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .message.sent {
+            justify-content: flex-end;
+        }
+        .message .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .message .message-content {
+            padding: 10px 15px;
+            border-radius: 20px;
+            max-width: 70%;
+            word-wrap: break-word;
+            background-color: #f0f0f0; /* Default background color */
+        }
+        .message.sent .message-content {
+            background-color: #007bff;
+            color: white;
+        }
+        .message.received .message-content {
+            background-color: white;
+            color: black;
+        }
+        .chat-footer {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #ddd;
+        }
         #messages {
             list-style-type: none;
             margin: 0;
             padding: 0;
         }
-
         #messages li {
-            padding: 8px;
             margin-bottom: 4px;
-            border: 1px solid #ccc;
         }
-
-        #message-form {
-            margin-top: 20px;
-        }
-
-        #username-form {
-            margin-bottom: 20px;
+        .username {
+            font-weight: bold;
+            margin-bottom: 4px;
         }
     </style>
 </head>
 <body>
-<h1>Real-Time Chat</h1>
-
-<div id="username-form">
-    <input id="username-input" placeholder="Enter your username"/>
-    <button id="connectBtn">Connect</button>
-</div>
-
-<div id="chat" style="display: none;">
-    <ul id="messages"></ul>
-    <form id="message-form">
-        <input id="message-input" autocomplete="off" placeholder="Type a message..."/>
-        <button>Send</button>
-    </form>
+<div class="chat-container">
+    <div class="chat-header">Real-Time Chat</div>
+    <div id="username-form" class="p-3">
+        <div class="input-group mb-3">
+            <input id="username-input" type="text" class="form-control" placeholder="Enter your username">
+            <div class="input-group-append">
+                <button id="connectBtn" class="btn btn-primary" type="button">Connect</button>
+            </div>
+        </div>
+    </div>
+    <div id="chat" style="display: none;">
+        <div class="chat-body" id="chat-body">
+            <ul id="messages"></ul>
+        </div>
+        <div class="chat-footer">
+            <form id="message-form" class="input-group">
+                <input id="message-input" type="text" class="form-control" autocomplete="off" placeholder="Type a message...">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="submit">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -52,6 +113,7 @@
     const usernameInput = document.getElementById('username-input');
     const usernameForm = document.getElementById('username-form');
     const chatDiv = document.getElementById('chat');
+    const chatBody = document.getElementById('chat-body');
 
     const messages = document.getElementById('messages');
     const messageForm = document.getElementById('message-form');
@@ -69,25 +131,9 @@
             chatDiv.style.display = 'block';
 
             // Listen for incoming messages
-            socket.on('chat message', (msg) => {
-                const li = document.createElement('li');
-                li.textContent = msg;
-                messages.appendChild(li);
-            });
-
-            // Connection opened
-            socket.addEventListener('connect', function (event) {
-                messages.innerHTML += '<p>Connected to the WebSocket server.</p>';
-            });
-
-            // Connection closed
-            socket.addEventListener('disconnect', function (event) {
-                messages.innerHTML += '<p>Disconnected from the WebSocket server.</p>';
-            });
-
-            // Connection error
-            socket.addEventListener('error', function (event) {
-                messages.innerHTML += '<p>Error: ' + event.data + '</p>';
+            socket.on('chat message', (data) => {
+                const { message, sender } = data;
+                displayMessage(message, sender);
             });
 
             // Handle form submission
@@ -95,12 +141,46 @@
                 event.preventDefault();
                 const message = messageInput.value;
                 if (message) {
-                    socket.emit('chat message', `${username}: ${message}`);
-                    messageInput.value = '';
+                    socket.emit('chat message', { message, sender: username });
+                    messageInput.value = ''; // Clear input field after sending
                 }
             });
         }
     });
+
+    function displayMessage(message, sender) {
+        const li = document.createElement('li');
+        li.classList.add('message');
+
+        const isSentByCurrentUser = sender === username;
+        if (isSentByCurrentUser) {
+            li.classList.add('sent');
+        } else {
+            li.classList.add('received');
+        }
+
+        const avatar = document.createElement('img');
+        avatar.src = `https://via.placeholder.com/40.png?text=${sender.charAt(0)}`;
+        avatar.alt = 'Avatar';
+        avatar.classList.add('avatar');
+
+        const usernameDiv = document.createElement('div');
+        usernameDiv.textContent = sender;
+        usernameDiv.classList.add('username');
+
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        messageDiv.classList.add('message-content');
+
+        li.prepend(avatar);
+        //li.appendChild(usernameDiv);
+        li.appendChild(messageDiv);
+
+        messages.appendChild(li);
+
+        // Scroll to bottom of chat body
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
 </script>
 </body>
 </html>

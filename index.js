@@ -18,8 +18,9 @@ io.on('connection', (socket) => {
         console.log(`User set username: ${username}`);
     });
 
-    socket.on('chat message', (msg) => {
-        io.emit('chat message', msg);
+    socket.on('chat message', (data) => {
+        const { message, sender } = data;
+        io.emit('chat message', { message, sender });
     });
 
     socket.on('disconnect', () => {
